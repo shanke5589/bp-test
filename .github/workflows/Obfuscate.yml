@@ -1,0 +1,66 @@
+name: Build Obfuscate BPB Panel
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 1 * * *" # 每天 1:00 AM 运行
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04  # 运行在高性能环境
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "latest"
+
+      - name: Install dependencies
+        run: |
+          npm install -g javascript-obfuscator
+
+      - name: Clone BPB workjs
+        run: |
+          wget -O origin.js https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/build/unobfuscated-worker.js
+
+      - name: Check file size
+        run: |
+          ls -lh origin.js  # 检查 origin.js 体积，避免过大导致超时
+
+      - name: Obfuscate BPB worker js
+        run: |
+          node --max-old-space-size=4096 $(which javascript-obfuscator) origin.js --output _worker.js \
+          --compact true \
+          --control-flow-flattening false \  # 关闭复杂控制流扁平化
+          --dead-code-injection false \  # 关闭死代码注入
+          --identifier-names-generator hexadecimal \
+          --rename-globals true \
+          --string-array true \
+          --string-array-threshold 0.75 \  # 降低字符串数组混淆比例
+          --transform-object-keys true
+
+      - name: Check if obfuscated file changed
+        id: check_changes
+        run: |
+          if git diff --quiet _worker.js; then
+            echo "No changes detected. Skipping commit."
+            echo "::set-output name=changed::false"
+          else
+            echo "Changes detected. Proceeding with commit."
+            echo "::set-output name=changed::true"
+          fi
+
+      - name: Commit changes
+        if: steps.check_changes.outputs.changed == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          branch: main
+          commit_message: ':arrow_up: update latest bpb panel'
