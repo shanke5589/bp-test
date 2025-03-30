@@ -5,14 +5,14 @@ on:
     branches:
       - main
   schedule:
-    - cron: "0 1 * * *" # 每天 1:00 AM 运行
+    - cron: "0 2 * * *" # 每天 1:00 AM 运行
 
 permissions:
   contents: write
 
 jobs:
   build:
-    runs-on: ubuntu-22.04  # 运行在高性能环境
+    runs-on: ubuntu-22.04  
 
     steps:
       - name: Check out the code
@@ -33,18 +33,18 @@ jobs:
 
       - name: Check file size
         run: |
-          ls -lh origin.js  # 检查 origin.js 体积，避免过大导致超时
+          ls -lh origin.js  
 
       - name: Obfuscate BPB worker js
         run: |
           node --max-old-space-size=4096 $(which javascript-obfuscator) origin.js --output _worker.js \
           --compact true \
-          --control-flow-flattening false \  # 关闭复杂控制流扁平化
-          --dead-code-injection false \  # 关闭死代码注入
+          --control-flow-flattening false \  
+          --dead-code-injection false \  
           --identifier-names-generator hexadecimal \
           --rename-globals true \
           --string-array true \
-          --string-array-threshold 0.75 \  # 降低字符串数组混淆比例
+          --string-array-threshold 0.75 \  
           --transform-object-keys true
 
       - name: Check if obfuscated file changed
